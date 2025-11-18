@@ -1,4 +1,9 @@
 #this is the chat server that handles any and all of the clients connecting over the network and sending/receiving messages
+
+#handle font coloring in terminal
+from colorama import init, Fore, Back, Style
+init(autoreset=True)#initialize colorama with auto reset to prevent color bleed in terminal
+
 import socket#import socket module for communication over the network
 import threading#import threading module to allow multiple tasks to be run at once while over the same process
 import argparse#import argparse module to handle command line arguments
@@ -27,11 +32,11 @@ class ChatServer:
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#creates a TCP socket for the server
         server_sock.bind(("", self.port))#binds the socket to all interfaces on the specified port
         server_sock.listen(5)#starts listening for any and all incoming connections
-        print(f"ChatServer is listening on port {self.port}")#prints out that the server is listening on the specified port
+        print(Fore.GREEN + f"ChatServer is listening on port {self.port}")#prints out that the server is listening on the specified port
         try:#for handling keyboard interrupts to shut down the server cleanly
             while True:#while the server is currently running
                 if time.time() - self.last_activity > 180:#checks if the server has been idle for more than 3 minutes or 180 seconds
-                    print("The server has been idle for 3 minutes. It is now shutting down.")#prints out that the server is shutting down due to inactivity
+                    print(Fore.YELLOW + "The server has been idle for 3 minutes. It is now shutting down.")#prints out that the server is shutting down due to inactivity
                     break#breaks out of the loop to shut down the server
                 
                 #limiting the number of threads to prevent data corruption from overload
@@ -51,7 +56,7 @@ class ChatServer:
                 threading.Thread(target=self.handle_client, args=(client_sock,), daemon=True).start()#starts a new thread to handle the connected client
                 
         except KeyboardInterrupt:#handles the keyboard interrupt exception for clean shutdown with Ctrl-C
-            print("\nThe server is shutting down from Ctrl-C...")
+            print(Fore.RED + "\nThe server is shutting down from Ctrl-C...")
         finally:
             server_sock.close()#finally closes the server socket when the server is shutting down
     
