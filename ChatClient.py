@@ -9,17 +9,17 @@ yellow_font = Fore.YELLOW
 blue_font = Fore.BLUE
 white_font = Fore.WHITE
 
+from protocol import sendObject, receiveObject#gets these modules from protocol.py for sending and receiving messages
 import socket#brings in the socket module so that the client can communicate over the network
 import threading#threading module will allow for multiple tasks to be run at once while over the same process
 from email.mime.text import MIMEText#formatting for the text to be used with messages being sent and received
-from protocol import sendObject, receiveObject#gets these modules from protocol.py for sending and receiving messages
 #start the ChatClient  
 class ChatClient:
     def __init__(self):
-        self.sock = None#initialize with None because there is no connection over a network yet
-        self.nickname = None#initialize with None because the user has not set a nickname yet
+        self.sock=None#initialize with None because there is no connection over a network yet
+        self.nickname=None#initialize with None because the user has not set a nickname yet
     #begin connection to server
-    def connect(self, host, port):#connect function that will take the instance of the class, the server address, and the server port number
+    def clientConnect(self, host, port):#connect function that will take the instance of the class, the server address, and the server port number
         if self.sock is not None:#for when there is already a connection over the network
             print(yellow_font + "You are already connected to a server. Try /quit first.")
             return
@@ -27,12 +27,13 @@ class ChatClient:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#create socket object at specific IPv4 address and TCP connection for socket type
             self.sock.connect((host, port))#connect to the server using the retrieved host and port
             print(green_font + f"Connected to {host}:{port}")#print confirmation the you are now connected to the server at a specific host and port
-            threading.Thread(target=self.listen_loop, daemon=True).start()#create new thread object that will be continuously listening for any and all incoming messages from the server
+            self.listener_thread = threading.Thread(target=self.listenerOnLoop)
+            self.listener_thread.start()#create new thread object that will be continuously listening for any and all incoming messages from the server
         except Exception as e:#if the connection fails for any reason, an error message will be printed
             print(red_font + "The connection failed:", e)
             self.sock = None#will reset the socket to None since the connection was not successful
     #threaded listener function for incoming messages from the server to the client
-    def listen_loop(self):
+    def listenerOnLoop(self):
         while True:#while the thread is looping to listen for incoming messages
             try:
                 msg = receiveObject(self.sock)#receives an object from the server over the network socket
@@ -46,7 +47,7 @@ class ChatClient:
                 print(red_font + "There was an error trying to receive your message", e)
                 break#thread breaks out of the listening loop
     #possible user input commands that are sent to the server
-    def input_loop(self):
+    def inputCommandsLoop(self):
         while True:#continuously loops to wait for user input
             text = input(white_font + "> ").strip()#has > to prompt the user for input and .strip() to remove any whitespaces before or after the input
             if not text:#for when the user inputs nothing and just hits enter
@@ -61,7 +62,7 @@ class ChatClient:
                 port = 12345#default port number
                 if len(parts) > 2:#for when the user provides a port number
                     port = int(parts[2])#retrieves the port number from the input and converts it to an integer
-                self.connect(host, port)#attempts to connect to the server using the provided host and port
+                self.clientConnect(host, port)#attempts to connect to the server using the provided host and port
                 
             elif text.startswith("/nick"):#for when the user inputs the /nick command to set their nickname
                 if self.sock is None:#for when there is no connection to a server yet
@@ -107,21 +108,27 @@ class ChatClient:
                         print(obj.get("info", obj) + "\n")#prints the received message to the console for the user to see
                 except:#for when there is an error receiving the message
                     pass#ignore the error and proceed to disconnect
+                try:
                     self.sock.close()#closes the socket connection
                     self.sock = None#resets the socket to None and disconnects from the server
+                except:
+                    pass
+                if hasattr(self, "listener_thread"):
+                    self.listener_thread.join(timeout=1)
                 print(red_font + "You have disconnected from the server.")#lets the user know they have disconnected from the server
                 break#breaks out of the input loop and exits the client
 
             elif text.startswith("/help"):#for when the user inputs the /help command to see a list of available commands
-                print(Style.BRIGHT + white_font + "Here are your available commands:")
-                print(green_font + "/connect <host> [port]", blue_font + "-connect to a server")
-                print(green_font + "/nick <nickname>      ", blue_font + "-set your nickname")
-                print(green_font + "/list                 ", blue_font + "-list channels and the number of users in each channel")
-                print(green_font + "/join <channel>       ", blue_font + "-join a channel")
-                print(green_font + "/leave [<channel>]    ", blue_font + "-leave a channel")
-                print(green_font + "/quit                 ", blue_font + "-leave the chat and disconnect from the server")
-                print(green_font + "/help                 ", blue_font + "- print this message")
-
+                print(
+                Style.BRIGHT + white_font + 
+                "Here are your available commands:\n"
+                + green_font + "/connect <host> [port]" + blue_font + "-connect to a server\n"
+                + green_font + "/nick <nickname>      " + blue_font + "-set your nickname\n"
+                + green_font + "/list                 " + blue_font + "-list channels and the number of users in each channel\n"
+                + green_font + "/join <channel>       " + blue_font + "-join a channel\n"
+                + green_font + "/leave [<channel>]    " + blue_font + "-leave a channel\n"
+                + green_font + "/quit                 " + blue_font + "-leave the chat and disconnect from the server\n"
+                + green_font + "/help                 " + blue_font + "-print this message\n")
             else:#for when the user inputs an unknown command
                 print(yellow_font + "Unknown command. Type /help for a list of commands.")
                 continue#continues to prompt the user for input
@@ -129,4 +136,4 @@ class ChatClient:
 #calls the ChatClient class and starts the input loop for the user to be able to begin entering commands
 if __name__ == "__main__":
     client = ChatClient()
-    client.input_loop()
+    client.inputCommandsLoop()
