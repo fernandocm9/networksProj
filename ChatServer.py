@@ -243,7 +243,7 @@ class ChatServer:
         except:#for when there may be an error when trying to close the socket
             pass#pass if there is an error when trying to close the socket
     
-    def tellAll(self, channel, obj, except_sock=None):#function to broadcast messages to all clients in a specified channel
+    def tellAll(self, channel, obj, except_sock=None):#function to share messages to all clients in a specified channel
         for sock, user in self.clients.items():#looks at each connected client socket and its associated user information
             if sock == except_sock:#for when the socket is the exception socket that should not receive the message
                 continue#continues with looking at the next client socket
